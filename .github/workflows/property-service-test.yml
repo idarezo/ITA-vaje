@@ -36,12 +36,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
+      - name: Setup environment
+        run: |
+          cp .env.example .env
+          cat .env
+
+      - name: Start Docker containers
+        run: |
+          cd ..
+          docker-compose up -d
+          cd property-service
+          sleep 10
+
+      - name: Run all tests (API + Database)
         run: npm test
 
-      - name: Run tests with coverage
+      - name: Run all tests with coverage
         run: npm test -- --coverage
         continue-on-error: true
+
+      - name: Stop Docker containers
+        if: always()
+        run: |
+          cd ..
+          docker-compose down
+          cd property-service
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4

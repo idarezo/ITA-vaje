@@ -8,7 +8,10 @@
     "start": "node property-service.js",
     "dev": "node --watch property-service.js",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:api": "jest --testPathPattern=api.test --runInBand",
+    "test:db": "jest --testPathPattern=db.test --runInBand",
+    "test:all": "jest --testPathPattern='(api|db).test' --runInBand"
   },
   "keywords": [
     "property",
