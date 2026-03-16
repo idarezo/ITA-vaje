@@ -38,8 +38,10 @@ jobs:
 
       - name: Setup environment
         run: |
+          cd ..
           cp .env.example .env
           cat .env
+          cd property-service
 
       - name: Start Docker containers
         run: |

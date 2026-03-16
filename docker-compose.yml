@@ -26,10 +26,11 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
   property-service:
-    build: .
+    build:
+      context: ./property-service
     container_name: property-service
     env_file:
-      - .env
+      - ./property-service/.env
     ports:
       - "3002:3002"
     depends_on:
