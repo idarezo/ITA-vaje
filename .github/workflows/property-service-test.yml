@@ -1,0 +1,52 @@
+name: Property Service Tests
+
+on:
+  push:
+    branches: [main, master, develop, dev]
+    paths:
+      - "property-service/**"
+      - ".github/workflows/property-service-test.yml"
+  pull_request:
+    branches: [main, master, develop, dev]
+    paths:
+      - "property-service/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    working-directory: ./property-service
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: property-service/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./property-service
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ./property-service
+        run: npm test
+
+      - name: Run tests with coverage
+        working-directory: ./property-service
+        run: npm test -- --coverage
+        continue-on-error: true
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./property-service/coverage/lcov.info
+          flags: property-service
+          name: property-service-coverage
+        continue-on-error: true
