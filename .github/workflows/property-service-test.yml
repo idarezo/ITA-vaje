@@ -44,7 +44,7 @@ jobs:
       - name: Start Docker containers
         run: |
           cd ..
-          docker-compose up -d
+          docker compose up -d
           cd property-service
           sleep 10
 
@@ -59,7 +59,7 @@ jobs:
         if: always()
         run: |
           cd ..
-          docker-compose down
+          docker compose down
           cd property-service
 
       - name: Upload coverage reports
