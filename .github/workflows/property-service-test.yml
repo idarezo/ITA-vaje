@@ -44,6 +44,7 @@ jobs:
 
       - name: Setup environment (property-service)
         run: cp .env.example .env
+        working-directory: ./property-service
 
       - name: Start Docker containers
         run: |
