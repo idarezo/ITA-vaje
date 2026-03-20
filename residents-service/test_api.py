@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -25,6 +26,18 @@ def override_get_db():
         db.close()
 
 
+def setup_function():
+    """Clear database before each test"""
+    with TestingSessionLocal() as db:
+        db.query(Resident).delete()
+        db.commit()
+
+
+def get_unique_email():
+    """Generate unique email for tests"""
+    return f"resident_{uuid.uuid4().hex[:8]}@example.com"
+
+
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
@@ -44,7 +57,7 @@ def test_create_resident():
         json={
             "first_name": "Janez",
             "last_name": "Novak",
-            "email": "janez@example.com",
+            "email": get_unique_email(),
             "phone": "+386 1 234 5678",
             "property_id": 1,
             "move_in_date": "2024-01-15",
@@ -63,12 +76,13 @@ def test_get_resident():
         json={
             "first_name": "Marija",
             "last_name": "Horvat",
-            "email": "marija@example.com",
+            "email": get_unique_email(),
             "phone": "+386 1 987 6543",
             "property_id": 1,
             "move_in_date": "2024-02-01",
         },
     )
+    assert create_response.status_code == 201, f"Create failed: {create_response.json()}"
     resident_id = create_response.json()["data"]["id"]
 
     # Get the resident
@@ -94,12 +108,13 @@ def test_update_resident():
         json={
             "first_name": "Petrov",
             "last_name": "Petrović",
-            "email": "petrov@example.com",
+            "email": get_unique_email(),
             "phone": "+386 1 111 1111",
             "property_id": 2,
             "move_in_date": "2024-03-01",
         },
     )
+    assert create_response.status_code == 201, f"Create failed: {create_response.json()}"
     resident_id = create_response.json()["data"]["id"]
 
     # Update the resident
@@ -122,12 +137,13 @@ def test_delete_resident():
         json={
             "first_name": "Ana",
             "last_name": "Anurag",
-            "email": "ana@example.com",
+            "email": get_unique_email(),
             "phone": "+386 1 555 5555",
             "property_id": 1,
             "move_in_date": "2024-04-01",
         },
     )
+    assert create_response.status_code == 201, f"Create failed: {create_response.json()}"
     resident_id = create_response.json()["data"]["id"]
 
     # Delete the resident
