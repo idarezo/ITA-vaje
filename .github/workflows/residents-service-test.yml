@@ -53,9 +53,8 @@ jobs:
           EOF
 
       - name: Start Docker containers (residents-mysql only)
-        run: |
-          docker compose -f docker-compose.test.yml up -d residents-mysql
-          sleep 15
+        run: docker compose up -d residents-mysql && sleep 15
+        working-directory: .
 
       - name: Verify MySQL connection
         run: |
@@ -93,15 +92,16 @@ jobs:
           echo "=== Docker Containers ==="
           docker ps -a
           echo ""
+          echo "=== Docker Logs (residents-service) ==="
+          docker logs residents-service 2>/dev/null | tail -20 || echo "No logs available"
+          echo ""
           echo "=== Docker Logs (residents-mysql) ==="
           docker logs residents-mysql 2>/dev/null | tail -20 || echo "No logs available"
 
       - name: Stop Docker containers
         if: always()
-        run: |
-          cd ..
-          docker compose down -v --remove-orphans
-          cd residents-service
+        run: docker compose down -v
+        working-directory: .
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
