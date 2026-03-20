@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package residents;
+
+option go_package = "github.com/example/residents";
+
+service ResidentsService {
+  rpc CreateResident (CreateResidentRequest) returns (ResidentResponse);
+  rpc GetResident (GetResidentRequest) returns (ResidentResponse);
+  rpc ListResidents (ListResidentsRequest) returns (ListResidentsResponse);
+  rpc UpdateResident (UpdateResidentRequest) returns (ResidentResponse);
+  rpc DeleteResident (DeleteResidentRequest) returns (DeleteResidentResponse);
+  rpc GetResidentsByProperty (GetResidentsByPropertyRequest) returns (ListResidentsResponse);
+}
+
+message Resident {
+  int32 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string phone = 5;
+  int32 property_id = 6;
+  string move_in_date = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message CreateResidentRequest {
+  string first_name = 1;
+  string last_name = 2;
+  string email = 3;
+  string phone = 4;
+  int32 property_id = 5;
+  string move_in_date = 6;
+}
+
+message GetResidentRequest {
+  int32 id = 1;
+}
+
+message ListResidentsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message UpdateResidentRequest {
+  int32 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string phone = 5;
+  int32 property_id = 6;
+  string move_in_date = 7;
+}
+
+message DeleteResidentRequest {
+  int32 id = 1;
+}
+
+message DeleteResidentResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResidentResponse {
+  bool success = 1;
+  string message = 2;
+  Resident data = 3;
+}
+
+message ListResidentsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Resident residents = 3;
+  int32 total = 4;
+}
+
+message GetResidentsByPropertyRequest {
+  int32 property_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}

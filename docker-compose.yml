@@ -37,6 +37,37 @@ services:
       - mysql
       - rabbitmq
 
+  residents-mysql:
+    image: mysql:8.0
+    container_name: residents-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: residents_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - residents_mysql_data:/var/lib/mysql
+
+  residents-service:
+    build:
+      context: ./residents-service
+    container_name: residents-service
+    env_file:
+      - ./residents-service/.env
+    ports:
+      - "3003:3003"
+      - "50051:50051"
+    depends_on:
+      - residents-mysql
+    environment:
+      MYSQL_HOST: residents-mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: residents_db
+      MYSQL_PORT: 3306
+
 volumes:
   mysql_data:
   rabbitmq_data:
+  residents_mysql_data:
