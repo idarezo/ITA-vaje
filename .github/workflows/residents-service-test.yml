@@ -52,16 +52,16 @@ jobs:
           DEBUG=true
           EOF
 
-      - name: Start Docker containers
+      - name: Start Docker containers (residents-mysql only)
         run: |
           cd ..
-          docker compose up -d
+          docker compose up -d residents-mysql
           cd residents-service
           sleep 15
 
       - name: Verify MySQL connection
         run: |
-          timeout 30 bash -c 'until mysqladmin ping -h127.0.0.1 -uroot -ppassword 2>/dev/null; do sleep 1; done'
+          timeout 30 bash -c 'until mysqladmin ping -h127.0.0.1 -P3307 -uroot -ppassword 2>/dev/null; do sleep 1; done'
         continue-on-error: true
 
       - name: Generate gRPC proto files
@@ -95,9 +95,6 @@ jobs:
           echo "=== Docker Containers ==="
           docker ps -a
           echo ""
-          echo "=== Docker Logs (residents-service) ==="
-          docker logs residents-service 2>/dev/null | tail -20 || echo "No logs available"
-          echo ""
           echo "=== Docker Logs (residents-mysql) ==="
           docker logs residents-mysql 2>/dev/null | tail -20 || echo "No logs available"
 
@@ -105,7 +102,7 @@ jobs:
         if: always()
         run: |
           cd ..
-          docker compose down -v
+          docker compose down -v --remove-orphans
           cd residents-service
 
       - name: Upload coverage reports to Codecov
