@@ -54,9 +54,7 @@ jobs:
 
       - name: Start Docker containers (residents-mysql only)
         run: |
-          cd ..
-          docker compose up -d residents-mysql
-          cd residents-service
+          docker compose -f docker-compose.test.yml up -d residents-mysql
           sleep 15
 
       - name: Verify MySQL connection
