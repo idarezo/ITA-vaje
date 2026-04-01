@@ -1,5 +1,6 @@
 package com.ita.paymentservice.service;
 
+import com.ita.paymentservice.messaging.PaymentEventPublisher;
 import com.ita.paymentservice.model.Payment;
 import com.ita.paymentservice.model.PaymentRequest;
 import com.ita.paymentservice.model.PaymentResponse;
@@ -8,6 +9,8 @@ import com.ita.paymentservice.repository.PaymentRepository;
 import java.time.Instant;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
@@ -17,7 +20,10 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
     private final PaymentRepository paymentRepository;
+    private final PaymentEventPublisher paymentEventPublisher;
 
     public Mono<PaymentResponse> processRentPayment(PaymentRequest request) {
         if (request.getAmount() == null || request.getAmount().signum() <= 0) {
@@ -42,8 +48,9 @@ public class PaymentService {
                 .build();
 
         return paymentRepository.save(payment)
-                .map(saved -> new PaymentResponse(saved.getId(), saved.getStatus(),
-                        "Rent payment registered"));
+            .flatMap(saved -> paymentEventPublisher.publishPaymentEvent(saved, "payment.created")
+                .thenReturn(new PaymentResponse(saved.getId(), saved.getStatus(),
+                    "Rent payment registered")));
     }
 
     public Mono<Payment> getPaymentById(String paymentId) {
@@ -63,14 +70,15 @@ public class PaymentService {
     }
 
     public Mono<PaymentResponse> cancelPayment(String paymentId) {
-        return updateStatus(paymentId, PaymentStatus.CANCELLED, "Payment cancelled");
+        return updateStatus(paymentId, PaymentStatus.CANCELLED, "Payment cancelled", "payment.cancelled");
     }
 
     public Mono<PaymentResponse> retryPayment(String paymentId) {
-        return updateStatus(paymentId, PaymentStatus.PENDING, "Retry initiated");
+        return updateStatus(paymentId, PaymentStatus.PENDING, "Retry initiated", "payment.retry");
     }
 
-    private Mono<PaymentResponse> updateStatus(String paymentId, PaymentStatus newStatus, String message) {
+    private Mono<PaymentResponse> updateStatus(String paymentId, PaymentStatus newStatus, String message,
+            String eventType) {
         return paymentRepository.findById(paymentId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Payment not found")))
                 .flatMap(existing -> {
@@ -78,6 +86,9 @@ public class PaymentService {
                     existing.setUpdatedAt(Instant.now());
                     return paymentRepository.save(existing);
                 })
-                .map(saved -> new PaymentResponse(saved.getId(), saved.getStatus(), message));
+                .flatMap(saved -> paymentEventPublisher.publishPaymentEvent(saved,
+                                eventType != null ? eventType : "payment.status-changed")
+                        .thenReturn(new PaymentResponse(saved.getId(), saved.getStatus(), message)))
+                .doOnError(error -> log.warn("Failed to update payment {}: {}", paymentId, error.getMessage()));
     }
 }

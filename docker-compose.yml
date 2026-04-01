@@ -75,19 +75,37 @@ services:
     volumes:
       - payment_mongo_data:/data/db
 
+  activemq:
+    image: apache/activemq-classic:5.18.3
+    container_name: payment-activemq
+    restart: always
+    environment:
+      ACTIVEMQ_ADMIN_LOGIN: admin
+      ACTIVEMQ_ADMIN_PASSWORD: admin
+    ports:
+      - "61616:61616"
+      - "8161:8161"
+    volumes:
+      - activemq_data:/opt/activemq/data
+
   payment-service:
     build:
       context: ./payment-service
     container_name: payment-service
     environment:
       MONGODB_URI: mongodb://payment-mongo:27017/payment-service
+      ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      ACTIVEMQ_USER: admin
+      ACTIVEMQ_PASSWORD: admin
     ports:
       - "3004:3004"
     depends_on:
       - payment-mongo
+      - activemq
 
 volumes:
   mysql_data:
   rabbitmq_data:
   residents_mysql_data:
   payment_mongo_data:
+  activemq_data:
