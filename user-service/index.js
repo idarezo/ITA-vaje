@@ -14,6 +14,10 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3005;
 const JWT_SECRET = process.env.JWT_SECRET || "development-secret";
+const DEFAULT_LANDLORD_EMAIL =
+  process.env.SEED_LANDLORD_EMAIL || "landlord@example.com";
+const DEFAULT_LANDLORD_PASSWORD =
+  process.env.SEED_LANDLORD_PASSWORD || "Password123!";
 
 const swaggerDocument = {
   openapi: "3.0.3",
@@ -314,9 +318,52 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+async function ensureDefaultLandlord() {
+  const db = getDb();
+
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, DEFAULT_LANDLORD_EMAIL))
+    .limit(1);
+
+  if (existing.length) {
+    console.log(
+      `Default landlord already present (${existing[0].email}, id=${existing[0].id}).`,
+    );
+    return existing[0];
+  }
+
+  const passwordHash = await bcrypt.hash(DEFAULT_LANDLORD_PASSWORD, 10);
+
+  await db
+    .insert(users)
+    .values({
+      firstName: process.env.SEED_LANDLORD_FIRST_NAME || "Lara",
+      lastName: process.env.SEED_LANDLORD_LAST_NAME || "Landlord",
+      birthYear: Number(process.env.SEED_LANDLORD_BIRTH_YEAR || 1988),
+      role: "landlord",
+      email: DEFAULT_LANDLORD_EMAIL,
+      passwordHash,
+    })
+    .execute();
+
+  const [created] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, DEFAULT_LANDLORD_EMAIL))
+    .limit(1);
+
+  console.log(
+    `Seeded default landlord ${created.email} (id=${created.id}). Password: ${DEFAULT_LANDLORD_PASSWORD}`,
+  );
+  return created;
+}
+
 async function start() {
   try {
     await initDb();
+    await ensureDefaultLandlord();
     app.listen(PORT, () => {
       console.log(`User service running on port ${PORT}`);
     });

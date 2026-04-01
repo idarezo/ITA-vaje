@@ -36,7 +36,8 @@ export async function initDb(retries = 10, delay = 3000) {
           bedrooms INT,
           bathrooms INT,
           area DECIMAL(10,2),
-          registeredCount INT DEFAULT 0
+          registeredCount INT DEFAULT 0,
+          ownerUserId INT
         )
       `);
 

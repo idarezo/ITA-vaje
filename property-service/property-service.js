@@ -4,13 +4,14 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import { initDb, getDb } from "./db/index.js";
 import { properties, residents } from "./db/schema.js";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { initLogger, logger, closeLogger } from "./logger.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+const DEFAULT_LANDLORD_ID = Number(process.env.SEED_LANDLORD_ID || 1);
 
 // Swagger configuration
 const swaggerOptions = {
@@ -38,8 +39,47 @@ app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Initialize database and logger
-initDb();
 initLogger();
+let server;
+
+function defaultListings(ownerUserId) {
+  return [
+    {
+      title: "Riverside Loft",
+      description: "Modern loft with panoramic river view and coworking nook.",
+      address: "123 River St, Maribor",
+      price: "950.00",
+      bedrooms: 2,
+      bathrooms: 1,
+      area: "78.50",
+      registeredCount: 0,
+      ownerUserId,
+    },
+    {
+      title: "Old Town Studio",
+      description:
+        "Compact studio perfect for digital nomads, steps from cafes.",
+      address: "7 Glavni Trg, Ljubljana",
+      price: "720.00",
+      bedrooms: 1,
+      bathrooms: 1,
+      area: "42.00",
+      registeredCount: 0,
+      ownerUserId,
+    },
+    {
+      title: "Sunny Garden Duplex",
+      description: "Duplex with private garden and EV-ready parking spot.",
+      address: "55 Park Way, Celje",
+      price: "1350.00",
+      bedrooms: 3,
+      bathrooms: 2,
+      area: "128.00",
+      registeredCount: 0,
+      ownerUserId,
+    },
+  ];
+}
 
 /**
  * @swagger
@@ -59,6 +99,7 @@ initLogger();
  *               - title
  *               - address
  *               - price
+ *               - ownerUserId
  *             properties:
  *               title:
  *                 type: string
@@ -81,6 +122,10 @@ initLogger();
  *               area:
  *                 type: number
  *                 example: 150.5
+ *               ownerUserId:
+ *                 type: integer
+ *                 example: 1
+ *                 description: ID landlord uporabnika iz user-service
  *     responses:
  *       201:
  *         description: Property uspešno dodan
@@ -101,8 +146,16 @@ initLogger();
 // 1. DODAJANJE PROPERTY-JA (POST)
 app.post("/properties", async (req, res) => {
   try {
-    const { title, description, address, price, bedrooms, bathrooms, area } =
-      req.body;
+    const {
+      title,
+      description,
+      address,
+      price,
+      bedrooms,
+      bathrooms,
+      area,
+      ownerUserId,
+    } = req.body;
 
     if (!title || !address || price === undefined) {
       logger.warn("Dodajanje property-ja: Manjkajo obvezni parametri", {
@@ -115,6 +168,20 @@ app.post("/properties", async (req, res) => {
       });
     }
 
+    const normalizedOwnerId = Number(ownerUserId);
+    if (
+      !ownerUserId ||
+      Number.isNaN(normalizedOwnerId) ||
+      normalizedOwnerId <= 0
+    ) {
+      logger.warn("Dodajanje property-ja: Manjka ownerUserId", {
+        ownerUserId,
+      });
+      return res.status(400).json({
+        error: "ownerUserId (landlord ID) mora biti podan",
+      });
+    }
+
     const result = await getDb().insert(properties).values({
       title,
       description,
@@ -124,6 +191,7 @@ app.post("/properties", async (req, res) => {
       bathrooms,
       area,
       registeredCount: 0,
+      ownerUserId: normalizedOwnerId,
     });
 
     const propertyId = result.insertId || result[0].insertId;
@@ -132,11 +200,13 @@ app.post("/properties", async (req, res) => {
       title,
       address,
       price,
+      ownerUserId: normalizedOwnerId,
     });
 
     res.status(201).json({
       message: "Property uspešno dodan",
       id: propertyId,
+      ownerUserId: normalizedOwnerId,
     });
   } catch (error) {
     logger.error("Napaka pri dodajanju property-ja", {
@@ -212,20 +282,27 @@ app.get("/properties", async (req, res) => {
 
 /**
  * @swagger
- * /properties/{id}:
+ * /properties/owners/{ownerUserId}/{propertyId}:
  *   get:
- *     summary: Pridobi specifično nepremičnino
- *     description: Vrne podatke o specifični nepremičnini po ID-ju
+ *     summary: Pridobi specifično nepremičnino za določenega landlord-a
+ *     description: Vrne nepremičnino samo, če pripada podanemu ownerUserId.
  *     tags:
  *       - Properties
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: ownerUserId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID landlord uporabnika
+ *         example: 1
+ *       - in: path
+ *         name: propertyId
  *         required: true
  *         schema:
  *           type: integer
  *         description: ID nepremičnine
- *         example: 1
+ *         example: 10
  *     responses:
  *       200:
  *         description: Uspešno pridobljena nepremičnina
@@ -250,33 +327,65 @@ app.get("/properties", async (req, res) => {
  *                   type: integer
  *                 area:
  *                   type: number
+ *       400:
+ *         description: Neveljavni parametri
  *       404:
- *         description: Nepremičnina ni najdena
+ *         description: Nepremičnina ni najdena za tega ownerja
  *       500:
  *         description: Napaka na strežniku
  */
-app.get("/properties/:id", async (req, res) => {
+app.get("/properties/owners/:ownerUserId/:propertyId", async (req, res) => {
   try {
-    const { id } = req.params;
+    const { ownerUserId, propertyId } = req.params;
+    const normalizedOwnerId = Number(ownerUserId);
+    const normalizedPropertyId = Number(propertyId);
+
+    if (
+      Number.isNaN(normalizedOwnerId) ||
+      normalizedOwnerId <= 0 ||
+      Number.isNaN(normalizedPropertyId) ||
+      normalizedPropertyId <= 0
+    ) {
+      logger.warn("Neveljavni parametri pri pridobivanju property-ja", {
+        ownerUserId,
+        propertyId,
+      });
+      return res.status(400).json({
+        error: "ownerUserId in propertyId morata biti pozitivni številki",
+      });
+    }
+
     const result = await getDb()
       .select()
       .from(properties)
-      .where(eq(properties.id, parseInt(id)));
+      .where(
+        and(
+          eq(properties.id, normalizedPropertyId),
+          eq(properties.ownerUserId, normalizedOwnerId),
+        ),
+      );
 
     const property = result[0];
     if (!property) {
-      logger.warn("Property ne obstaja", { propertyId: id });
-      return res.status(404).json({ error: "Property ni najdena" });
+      logger.warn("Property ne obstaja ali ne pripada ownerju", {
+        propertyId: normalizedPropertyId,
+        ownerUserId: normalizedOwnerId,
+      });
+      return res
+        .status(404)
+        .json({ error: "Property ni najdena za tega ownerja" });
     }
 
     logger.info("Property pridobljen", {
-      propertyId: id,
+      propertyId: normalizedPropertyId,
+      ownerUserId: normalizedOwnerId,
       title: property.title,
     });
     res.json(property);
   } catch (error) {
     logger.error("Napaka pri pridobijanju property-ja", {
-      propertyId: req.params.id,
+      propertyId: req.params.propertyId,
+      ownerUserId: req.params.ownerUserId,
       error: error.message,
     });
     res.status(500).json({ error: error.message });
@@ -285,15 +394,93 @@ app.get("/properties/:id", async (req, res) => {
 
 /**
  * @swagger
- * /properties/{id}:
- *   put:
- *     summary: Posodobi nepremičnino
- *     description: Posodobi podatke o specifični nepremičnini
+ * /properties/owners/{ownerUserId}:
+ *   get:
+ *     summary: Pridobi nepremičnine za določenega landlord-a
+ *     description: Filtrira nepremičnine po ownerUserId (user-service ID).
  *     tags:
  *       - Properties
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: ownerUserId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID landlord uporabnika
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Seznam nepremičnin za podanega lastnika
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       address:
+ *                         type: string
+ *                       price:
+ *                         type: number
+ *                       ownerUserId:
+ *                         type: integer
+ *       400:
+ *         description: Neveljaven ownerUserId
+ */
+app.get("/properties/owners/:ownerUserId", async (req, res) => {
+  try {
+    const { ownerUserId } = req.params;
+    const normalized = Number(ownerUserId);
+
+    if (!ownerUserId || Number.isNaN(normalized) || normalized <= 0) {
+      logger.warn("Neveljaven ownerUserId pri filtriranju", { ownerUserId });
+      return res
+        .status(400)
+        .json({ error: "ownerUserId mora biti pozitivno število" });
+    }
+
+    const owned = await getDb()
+      .select()
+      .from(properties)
+      .where(eq(properties.ownerUserId, normalized));
+
+    res.json({ count: owned.length, data: owned });
+  } catch (error) {
+    logger.error("Napaka pri filtriranju property-jev po ownerUserId", {
+      ownerUserId: req.params.ownerUserId,
+      error: error.message,
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /properties/owners/{ownerUserId}/{propertyId}:
+ *   put:
+ *     summary: Posodobi nepremičnino določenega landlord-a
+ *     description: Posodobi podatke o nepremičnini, ki pripada ownerUserId.
+ *     tags:
+ *       - Properties
+ *     parameters:
+ *       - in: path
+ *         name: ownerUserId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID landlord uporabnika
+ *         example: 1
+ *       - in: path
+ *         name: propertyId
  *         required: true
  *         schema:
  *           type: integer
@@ -338,22 +525,48 @@ app.get("/properties/:id", async (req, res) => {
  *         description: Napaka na strežniku
  */
 // 3. SPREMINJANJE PROPERTY-JA (PUT)
-app.put("/properties/:id", async (req, res) => {
+app.put("/properties/owners/:ownerUserId/:propertyId", async (req, res) => {
   try {
-    const { id } = req.params;
+    const { ownerUserId, propertyId } = req.params;
+    const normalizedOwnerId = Number(ownerUserId);
+    const normalizedPropertyId = Number(propertyId);
+
+    if (
+      Number.isNaN(normalizedOwnerId) ||
+      normalizedOwnerId <= 0 ||
+      Number.isNaN(normalizedPropertyId) ||
+      normalizedPropertyId <= 0
+    ) {
+      logger.warn("Neveljavni parametri pri posodabljanju property-ja", {
+        ownerUserId,
+        propertyId,
+      });
+      return res.status(400).json({
+        error: "ownerUserId in propertyId morata biti pozitivni številki",
+      });
+    }
+
     const updates = req.body;
 
     // Preveri ali obstaja
     const existingResult = await getDb()
       .select()
       .from(properties)
-      .where(eq(properties.id, parseInt(id)));
+      .where(
+        and(
+          eq(properties.id, normalizedPropertyId),
+          eq(properties.ownerUserId, normalizedOwnerId),
+        ),
+      );
     const existing = existingResult[0];
     if (!existing) {
       logger.warn("Poskus posodobitve neobstoječe property-ja", {
-        propertyId: id,
+        propertyId: normalizedPropertyId,
+        ownerUserId: normalizedOwnerId,
       });
-      return res.status(404).json({ error: "Property ni najdena" });
+      return res
+        .status(404)
+        .json({ error: "Property ni najdena za tega ownerja" });
     }
 
     // Posodobi lastnosti
@@ -362,15 +575,20 @@ app.put("/properties/:id", async (req, res) => {
       .set({
         ...updates,
       })
-      .where(eq(properties.id, parseInt(id)));
+      .where(eq(properties.id, normalizedPropertyId));
 
-    logger.info("Property posodobljen", { propertyId: id, updates });
+    logger.info("Property posodobljen", {
+      propertyId: normalizedPropertyId,
+      ownerUserId: normalizedOwnerId,
+      updates,
+    });
     res.json({
       message: "Property uspešno posodobljen",
     });
   } catch (error) {
     logger.error("Napaka pri posodabljanju property-ja", {
-      propertyId: req.params.id,
+      propertyId: req.params.propertyId,
+      ownerUserId: req.params.ownerUserId,
       error: error.message,
     });
     res.status(500).json({ error: error.message });
@@ -447,6 +665,78 @@ app.delete("/properties/:id", async (req, res) => {
 
 /**
  * @swagger
+ * /properties/{propertyId}/tenants:
+ *   get:
+ *     summary: Pridobi property skupaj s tenant informacijami
+ *     description: Vrne podatke o nepremičnini, za katero je tenant prijavljen (trenutno vrne samo property record).
+ *     tags:
+ *       - Properties
+ *     parameters:
+ *       - in: path
+ *         name: propertyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID nepremičnine
+ *         example: 7
+ *     responses:
+ *       200:
+ *         description: Nepremičnina uspešno vrnjena
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 title:
+ *                   type: string
+ *                 address:
+ *                   type: string
+ *                 price:
+ *                   type: number
+ *                 ownerUserId:
+ *                   type: integer
+ *       400:
+ *         description: Neveljaven propertyId
+ *       404:
+ *         description: Nepremičnina ni najdena
+ */
+app.get("/properties/{propertyId}/tenants", async (req, res) => {
+  const { propertyId } = req.params;
+  const normalizedPropertyId = Number(propertyId);
+
+  if (Number.isNaN(normalizedPropertyId) || normalizedPropertyId <= 0) {
+    logger.warn("Neveljavni parametri pri pridobivanju property-ja", {
+      propertyId,
+    });
+    return res.status(400).json({
+      error: "propertyId mora biti pozitivna številka",
+    });
+  }
+
+  const result = await getDb()
+    .select()
+    .from(properties)
+    .where(eq(properties.id, normalizedPropertyId));
+
+  const property = result[0];
+  if (!property) {
+    logger.warn("Property ne obstaja ", {
+      propertyId: normalizedPropertyId,
+    });
+    return res.status(404).json({ error: "Property ni najdena" });
+  }
+
+  logger.info("Property pridobljen", {
+    propertyId: normalizedPropertyId,
+    title: property.title,
+  });
+  res.json(property);
+});
+
+/**
+ * @swagger
  * /health:
  *   get:
  *     summary: Zdravstveni pregled
@@ -470,29 +760,81 @@ app.get("/health", (req, res) => {
   res.json({ status: "Property service je aktiven" });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Property service je zagnan na portu ${PORT}`);
-  console.log(
-    `Swagger dokumentacija je dostopna na: http://localhost:${PORT}/api-docs`,
+async function ensureDefaultProperties() {
+  if (!Number.isInteger(DEFAULT_LANDLORD_ID) || DEFAULT_LANDLORD_ID <= 0) {
+    logger.warn(
+      "Skipping default property seed: invalid SEED_LANDLORD_ID value",
+      {
+        DEFAULT_LANDLORD_ID,
+      },
+    );
+    return;
+  }
+
+  const db = getDb();
+  const existing = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.ownerUserId, DEFAULT_LANDLORD_ID));
+
+  if (existing.length > 0) {
+    logger.info(
+      `Landlord ${DEFAULT_LANDLORD_ID} already has ${existing.length} properties; skipping default seed.`,
+    );
+    return;
+  }
+
+  const listings = defaultListings(DEFAULT_LANDLORD_ID);
+  await db.insert(properties).values(listings).execute();
+  logger.info(
+    `Seeded ${listings.length} default properties for landlord ${DEFAULT_LANDLORD_ID}`,
   );
-  logger.info("Property service je zagnan", { port: PORT });
-});
+}
+
+async function start() {
+  try {
+    await initDb();
+    await ensureDefaultProperties();
+    server = app.listen(PORT, () => {
+      console.log(`Property service je zagnan na portu ${PORT}`);
+      console.log(
+        `Swagger dokumentacija je dostopna na: http://localhost:${PORT}/api-docs`,
+      );
+      logger.info("Property service je zagnan", { port: PORT });
+    });
+  } catch (error) {
+    logger.error("Failed to start property service", { error: error.message });
+    process.exit(1);
+  }
+}
+
+start();
 
 // Zaustavi logger pri gašenju servisa
 process.on("SIGTERM", async () => {
   console.log("SIGTERM signal received: closing HTTP server");
-  server.close(() => {
-    console.log("HTTP server closed");
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed");
+      closeLogger();
+      process.exit(0);
+    });
+  } else {
     closeLogger();
     process.exit(0);
-  });
+  }
 });
 
 process.on("SIGINT", async () => {
   console.log("SIGINT signal received: closing HTTP server");
-  server.close(() => {
-    console.log("HTTP server closed");
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed");
+      closeLogger();
+      process.exit(0);
+    });
+  } else {
     closeLogger();
     process.exit(0);
-  });
+  }
 });

@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "test:api": "jest --testPathPattern=api.test --runInBand",
     "test:db": "jest --testPathPattern=db.test --runInBand",
-    "test:all": "jest --testPathPattern='(api|db).test' --runInBand"
+    "test:all": "jest --testPathPattern='(api|db).test' --runInBand",
+    "seed": "node scripts/seed.js"
   },
   "keywords": [
     "property",

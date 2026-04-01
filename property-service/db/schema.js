@@ -10,6 +10,7 @@ export const properties = mysqlTable("properties", {
   bathrooms: int("bathrooms"),
   area: decimal("area", { precision: 10, scale: 2 }),
   registeredCount: int("registeredCount").default(0),
+  ownerUserId: int("ownerUserId"),
 });
 
 export const residents = mysqlTable("residents", {
