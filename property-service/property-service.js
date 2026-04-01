@@ -702,7 +702,7 @@ app.delete("/properties/:id", async (req, res) => {
  *       404:
  *         description: Nepremičnina ni najdena
  */
-app.get("/properties/{propertyId}/tenants", async (req, res) => {
+app.get("/properties/:propertyId/tenants", async (req, res) => {
   const { propertyId } = req.params;
   const normalizedPropertyId = Number(propertyId);
 
