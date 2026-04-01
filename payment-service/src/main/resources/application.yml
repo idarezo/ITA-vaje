@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: payment-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/payment-service}
+springdoc:
+  swagger-ui:
+    tryItOutEnabled: true
+server:
+  port: 3004
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

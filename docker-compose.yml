@@ -66,7 +66,28 @@ services:
       MYSQL_DATABASE: residents_db
       MYSQL_PORT: 3306
 
+  payment-mongo:
+    image: mongo:6
+    container_name: payment-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - payment_mongo_data:/data/db
+
+  payment-service:
+    build:
+      context: ./payment-service
+    container_name: payment-service
+    environment:
+      MONGODB_URI: mongodb://payment-mongo:27017/payment-service
+    ports:
+      - "3004:3004"
+    depends_on:
+      - payment-mongo
+
 volumes:
   mysql_data:
   rabbitmq_data:
   residents_mysql_data:
+  payment_mongo_data:
