@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: payment-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/payment-service}
+  activemq:
+    broker-url: ${ACTIVEMQ_BROKER_URL:tcp://localhost:61616}
+    user: ${ACTIVEMQ_USER:admin}
+    password: ${ACTIVEMQ_PASSWORD:admin}
+springdoc:
+  swagger-ui:
+    tryItOutEnabled: true
+server:
+  port: 3004
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+messaging:
+  payment-events-queue: ${PAYMENT_EVENTS_QUEUE:payment.events}

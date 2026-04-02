@@ -1,0 +1,13 @@
+com\ita\paymentservice\model\Payment$PaymentBuilder.class
+com\ita\paymentservice\model\Payment.class
+com\ita\paymentservice\model\PaymentResponse.class
+com\ita\paymentservice\messaging\PaymentEvent.class
+com\ita\paymentservice\controller\PaymentController.class
+com\ita\paymentservice\service\PaymentService.class
+com\ita\paymentservice\model\PaymentRequest.class
+com\ita\paymentservice\controller\HealthController.class
+com\ita\paymentservice\messaging\PaymentEvent$PaymentEventBuilder.class
+com\ita\paymentservice\messaging\PaymentEventPublisher.class
+com\ita\paymentservice\PaymentServiceApplication.class
+com\ita\paymentservice\repository\PaymentRepository.class
+com\ita\paymentservice\model\PaymentStatus.class

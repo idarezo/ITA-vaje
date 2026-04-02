@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.ita.paymentservice.service.PaymentServiceTest
+-------------------------------------------------------------------------------
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.595 s -- in com.ita.paymentservice.service.PaymentServiceTest
