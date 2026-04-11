@@ -89,6 +89,22 @@ services:
     depends_on:
       - user-mysql
 
+  web-gateway:
+    build:
+      context: ./web-gateway
+    container_name: web-gateway
+    environment:
+      PORT: 4000
+      USER_SERVICE_URL: http://user-service:3005
+      PROPERTY_SERVICE_URL: http://property-service:3002
+      RESIDENTS_SERVICE_URL: http://residents-service:3003
+    ports:
+      - "4000:4000"
+    depends_on:
+      - user-service
+      - property-service
+      - residents-service
+
   payment-mongo:
     image: mongo:6
     container_name: payment-mongo
@@ -125,6 +141,22 @@ services:
     depends_on:
       - payment-mongo
       - activemq
+
+  mobile-gateway:
+    build:
+      context: ./mobile-gateway
+    container_name: mobile-gateway
+    environment:
+      PORT: 4001
+      PROPERTY_SERVICE_URL: http://property-service:3002
+      RESIDENTS_SERVICE_URL: http://residents-service:3003
+      PAYMENT_SERVICE_URL: http://payment-service:3004
+    ports:
+      - "4001:4001"
+    depends_on:
+      - property-service
+      - residents-service
+      - payment-service
 
 volumes:
   mysql_data:

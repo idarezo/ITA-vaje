@@ -32,3 +32,26 @@ POST /payments – vnos novega plačila
 GET /payments?propertyId={id} – pregled plačil za posamezno nepremičnino
 GET /payments/{id} – podrobnosti o posameznem plačilu
 PUT /payments/{id} – posodobitev stanja plačila
+
+API Gateway
+Opis: Dva ločena prehoda za odjemalce. Web gateway je namenjen najemodajalcem in auth toku, mobile gateway pa tenantu prikazuje njegove nepremičnine in plačila.
+
+Primeri endpointov:
+
+Web gateway: http://localhost:4000
+POST /auth/login
+POST /auth/register
+GET /owners/{ownerUserId}/properties
+GET /owners/{ownerUserId}/properties/{propertyId}
+POST /owners/{ownerUserId}/properties
+PUT /owners/{ownerUserId}/properties/{propertyId}
+DELETE /owners/{ownerUserId}/properties/{propertyId}
+GET /properties/{propertyId}
+
+Mobile gateway: http://localhost:4001
+GET /properties/{propertyId}
+GET /tenants/{tenantId}/property
+GET /tenants/{tenantId}/payments
+GET /tenants/{tenantId}/dashboard
+
+Demonstracija delovanja prehodov je primerna tudi preko Postmana.
