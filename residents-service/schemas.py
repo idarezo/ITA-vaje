@@ -4,6 +4,7 @@ from datetime import datetime
 
 
 class ResidentBase(BaseModel):
+    user_id: Optional[int] = None
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
@@ -17,16 +18,19 @@ class ResidentCreate(ResidentBase):
 
 
 class ResidentUpdate(BaseModel):
+    user_id: Optional[int] = None
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=20)
     property_id: Optional[int] = Field(None, gt=0)
     move_in_date: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class Resident(ResidentBase):
     id: int
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
 

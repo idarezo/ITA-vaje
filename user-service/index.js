@@ -314,6 +314,19 @@ app.post("/auth/logout", (req, res) => {
   });
 });
 
+app.get("/users/:userId", async (req, res) => {
+  const id = Number(req.params.userId);
+  if (!id || Number.isNaN(id)) return res.status(400).json({ message: "Invalid userId" });
+  const [user] = await getDb().select({
+    id: users.id,
+    firstName: users.firstName,
+    lastName: users.lastName,
+    role: users.role,
+  }).from(users).where(eq(users.id, id)).limit(1);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  return res.json(user);
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
@@ -360,10 +373,54 @@ async function ensureDefaultLandlord() {
   return created;
 }
 
+async function ensureDefaultTenant() {
+  const db = getDb();
+  const TENANT_EMAIL = "tenant@example.com";
+
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, TENANT_EMAIL))
+    .limit(1);
+
+  if (existing.length) {
+    console.log(
+      `Default tenant already present (${existing[0].email}, id=${existing[0].id}).`,
+    );
+    return existing[0];
+  }
+
+  const passwordHash = await bcrypt.hash("Tenant123!", 10);
+
+  await db
+    .insert(users)
+    .values({
+      firstName: "Ana",
+      lastName: "Kovač",
+      birthYear: 1995,
+      role: "tenant",
+      email: TENANT_EMAIL,
+      passwordHash,
+    })
+    .execute();
+
+  const [created] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, TENANT_EMAIL))
+    .limit(1);
+
+  console.log(
+    `Seeded default tenant ${created.email} (id=${created.id}). Password: Tenant123!`,
+  );
+  return created;
+}
+
 async function start() {
   try {
     await initDb();
     await ensureDefaultLandlord();
+    await ensureDefaultTenant();
     app.listen(PORT, () => {
       console.log(`User service running on port ${PORT}`);
     });

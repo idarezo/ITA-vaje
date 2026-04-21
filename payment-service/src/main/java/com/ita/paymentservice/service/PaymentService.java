@@ -6,6 +6,7 @@ import com.ita.paymentservice.model.PaymentRequest;
 import com.ita.paymentservice.model.PaymentResponse;
 import com.ita.paymentservice.model.PaymentStatus;
 import com.ita.paymentservice.repository.PaymentRepository;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -69,12 +70,35 @@ public class PaymentService {
         return paymentRepository.findAll();
     }
 
+    public Mono<Void> deletePaymentsByResident(Long residentId) {
+        return paymentRepository.findByResidentId(residentId)
+                .flatMap(paymentRepository::delete)
+                .then();
+    }
+
     public Mono<PaymentResponse> cancelPayment(String paymentId) {
         return updateStatus(paymentId, PaymentStatus.CANCELLED, "Payment cancelled", "payment.cancelled");
     }
 
     public Mono<PaymentResponse> retryPayment(String paymentId) {
         return updateStatus(paymentId, PaymentStatus.PENDING, "Retry initiated", "payment.retry");
+    }
+
+    public Mono<PaymentResponse> payPayment(String paymentId, BigDecimal paidAmount) {
+        return paymentRepository.findById(paymentId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Payment not found")))
+                .flatMap(existing -> {
+                    boolean isPartial = paidAmount != null
+                            && paidAmount.compareTo(BigDecimal.ZERO) > 0
+                            && paidAmount.compareTo(existing.getAmount()) < 0;
+                    existing.setPaidAmount(paidAmount != null ? paidAmount : existing.getAmount());
+                    existing.setStatus(isPartial ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.SUCCEEDED);
+                    existing.setUpdatedAt(Instant.now());
+                    return paymentRepository.save(existing);
+                })
+                .flatMap(saved -> paymentEventPublisher.publishPaymentEvent(saved, "payment.succeeded")
+                        .thenReturn(new PaymentResponse(saved.getId(), saved.getStatus(), "Payment completed")))
+                .doOnError(error -> log.warn("Failed to pay payment {}: {}", paymentId, error.getMessage()));
     }
 
     private Mono<PaymentResponse> updateStatus(String paymentId, PaymentStatus newStatus, String message,

@@ -21,6 +21,7 @@ public class Payment {
 	private Long propertyId;
 	private Long residentId;
 	private BigDecimal amount;
+	private BigDecimal paidAmount;
 	private String currency;
 	private PaymentStatus status;
 	private Instant dueDate;

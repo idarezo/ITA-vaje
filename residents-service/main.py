@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 import threading
 
-from database import init_db, get_db, Resident
+from database import init_db, get_db, SessionLocal, Resident
 from schemas import ResidentCreate, ResidentUpdate, Resident as ResidentSchema, ResidentList, ApiResponse
 from grpc_server import serve as grpc_serve
 
@@ -16,6 +16,27 @@ load_dotenv()
 
 API_PORT = int(os.getenv("API_PORT", "3003"))
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+SEED_RESIDENTS = [
+    {"first_name": "Bine",   "last_name": "Novak",  "email": "bine.novak@example.com",   "phone": "+386 41 333 444", "property_id": 2, "move_in_date": "2024-03-01"},
+    {"first_name": "Cvetka", "last_name": "Horvat", "email": "cvetka.horvat@example.com", "phone": None,            "property_id": 3, "move_in_date": "2023-09-01"},
+    {"first_name": "Ana",    "last_name": "Kovač",  "email": "tenant@example.com",        "phone": "+386 41 111 222", "property_id": 1, "move_in_date": "2024-01-15"},
+]
+
+def seed_residents():
+    db = SessionLocal()
+    try:
+        if db.query(Resident).count() > 0:
+            return
+        for data in SEED_RESIDENTS:
+            db.add(Resident(**data))
+        db.commit()
+        print(f"Seeded {len(SEED_RESIDENTS)} residents.")
+    except Exception as e:
+        db.rollback()
+        print(f"Seed failed: {e}")
+    finally:
+        db.close()
 
 # Start gRPC server in background thread
 def start_grpc_server():
@@ -25,12 +46,11 @@ def start_grpc_server():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database and start gRPC server
     init_db()
+    seed_residents()
     start_grpc_server()
     print("Residents Service started successfully")
     yield
-    # Shutdown
     print("Residents Service shutting down")
 
 
@@ -139,11 +159,12 @@ async def get_resident(resident_id: int, db: Session = Depends(get_db)):
     description="Pridobi seznam vseh rezidentov s paginacijo",
 )
 async def list_residents(
-    limit: int = 10, offset: int = 0, db: Session = Depends(get_db)
+    limit: int = 10, offset: int = 0, include_inactive: bool = False, db: Session = Depends(get_db)
 ):
     """List all residents with pagination"""
-    residents = db.query(Resident).limit(limit).offset(offset).all()
-    total = db.query(Resident).count()
+    q = db.query(Resident) if include_inactive else db.query(Resident).filter(Resident.is_active == True)
+    residents = q.limit(limit).offset(offset).all()
+    total = (db.query(Resident) if include_inactive else db.query(Resident).filter(Resident.is_active == True)).count()
 
     return ResidentList(
         residents=[ResidentSchema.from_orm(r) for r in residents],
@@ -210,7 +231,7 @@ async def update_resident(
     description="Izbriši rezidenta iz baze podatkov",
 )
 async def delete_resident(resident_id: int, db: Session = Depends(get_db)):
-    """Delete resident by ID"""
+    """Soft-delete resident by ID (sets is_active=False)"""
     resident = db.query(Resident).filter(Resident.id == resident_id).first()
     if not resident:
         raise HTTPException(
@@ -219,18 +240,18 @@ async def delete_resident(resident_id: int, db: Session = Depends(get_db)):
         )
 
     try:
-        db.delete(resident)
+        resident.is_active = False
         db.commit()
 
         return ApiResponse(
             success=True,
-            message="Rezident uspešno izbrisan",
+            message="Rezident uspešno deaktiviran",
         )
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Napaka pri brisanju rezidenta: {str(e)}",
+            detail=f"Napaka pri deaktiviranju rezidenta: {str(e)}",
         )
 
 
@@ -248,14 +269,14 @@ async def get_residents_by_property(
     """Get residents by property ID"""
     residents = (
         db.query(Resident)
-        .filter(Resident.property_id == property_id)
+        .filter(Resident.property_id == property_id, Resident.is_active == True)
         .limit(limit)
         .offset(offset)
         .all()
     )
     total = (
         db.query(Resident)
-        .filter(Resident.property_id == property_id)
+        .filter(Resident.property_id == property_id, Resident.is_active == True)
         .count()
     )
 

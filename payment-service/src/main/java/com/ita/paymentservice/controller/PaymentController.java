@@ -5,8 +5,11 @@ import com.ita.paymentservice.model.PaymentRequest;
 import com.ita.paymentservice.model.PaymentResponse;
 import com.ita.paymentservice.service.PaymentService;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -71,6 +74,28 @@ public class PaymentController {
     @PostMapping("/{paymentId}/retry")
     public Mono<PaymentResponse> retryPayment(@PathVariable String paymentId) {
         return paymentService.retryPayment(paymentId);
+    }
+
+    /**
+     *  Plačaj račun (nastavi status na SUCCEEDED)
+     */
+    @PostMapping("/{paymentId}/pay")
+    public Mono<PaymentResponse> payPayment(
+            @PathVariable String paymentId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        BigDecimal paidAmount = null;
+        if (body != null && body.get("amount") != null) {
+            paidAmount = new BigDecimal(body.get("amount").toString());
+        }
+        return paymentService.payPayment(paymentId, paidAmount);
+    }
+
+    /**
+     *  Izbriši vsa plačila rezidenta (kliče se ob brisanju rezidenta)
+     */
+    @DeleteMapping("/residents/{residentId}")
+    public Mono<Void> deletePaymentsByResident(@PathVariable Long residentId) {
+        return paymentService.deletePaymentsByResident(residentId);
     }
 
     /**
