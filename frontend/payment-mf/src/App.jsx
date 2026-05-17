@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_BASE = "http://localhost:4000";
+const API_BASE = process.env.API_BASE_URL || "http://localhost:4000";
 
 const STATUS_LABEL = {
   SUCCEEDED: "Plačano",

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: property-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: property-service
+  template:
+    metadata:
+      labels:
+        app: property-service
+    spec:
+      containers:
+        - name: property-service
+          image: idarezo123/property-service:latest
+          env:
+            - name: PORT
+              value: "3002"
+            - name: DB_HOST
+              value: "property-mysql"
+            - name: DB_USER
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: root-password
+            - name: DB_NAME
+              value: "property_db"
+            - name: RABBITMQ_URL
+              value: "amqp://guest:guest@rabbitmq:5672"
+            - name: SEED_LANDLORD_ID
+              value: "1"
+          ports:
+            - containerPort: 3002
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: property-service
+spec:
+  selector:
+    app: property-service
+  ports:
+    - port: 3002
+      targetPort: 3002

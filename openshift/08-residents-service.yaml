@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: residents-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: residents-service
+  template:
+    metadata:
+      labels:
+        app: residents-service
+    spec:
+      containers:
+        - name: residents-service
+          image: idarezo123/residents-service:latest
+          env:
+            - name: API_PORT
+              value: "3003"
+            - name: GRPC_PORT
+              value: "50051"
+            - name: MYSQL_HOST
+              value: "residents-mysql"
+            - name: MYSQL_USER
+              value: "root"
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: root-password
+            - name: MYSQL_DATABASE
+              value: "residents_db"
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: ENVIRONMENT
+              value: "production"
+          ports:
+            - containerPort: 3003
+            - containerPort: 50051
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: residents-service
+spec:
+  selector:
+    app: residents-service
+  ports:
+    - name: http
+      port: 3003
+      targetPort: 3003
+    - name: grpc
+      port: 50051
+      targetPort: 50051

@@ -1,0 +1,311 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-mf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-mf
+  template:
+    metadata:
+      labels:
+        app: auth-mf
+    spec:
+      containers:
+        - name: auth-mf
+          image: idarezo123/auth-mf:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-mf
+spec:
+  selector:
+    app: auth-mf
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: auth-mf
+spec:
+  to:
+    kind: Service
+    name: auth-mf
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: register-mf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: register-mf
+  template:
+    metadata:
+      labels:
+        app: register-mf
+    spec:
+      containers:
+        - name: register-mf
+          image: idarezo123/register-mf:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: register-mf
+spec:
+  selector:
+    app: register-mf
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: register-mf
+spec:
+  to:
+    kind: Service
+    name: register-mf
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-mf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-mf
+  template:
+    metadata:
+      labels:
+        app: payment-mf
+    spec:
+      containers:
+        - name: payment-mf
+          image: idarezo123/payment-mf:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-mf
+spec:
+  selector:
+    app: payment-mf
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: payment-mf
+spec:
+  to:
+    kind: Service
+    name: payment-mf
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: property-mf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: property-mf
+  template:
+    metadata:
+      labels:
+        app: property-mf
+    spec:
+      containers:
+        - name: property-mf
+          image: idarezo123/property-mf:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: property-mf
+spec:
+  selector:
+    app: property-mf
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: property-mf
+spec:
+  to:
+    kind: Service
+    name: property-mf
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: residents-mf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: residents-mf
+  template:
+    metadata:
+      labels:
+        app: residents-mf
+    spec:
+      containers:
+        - name: residents-mf
+          image: idarezo123/residents-mf:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: residents-mf
+spec:
+  selector:
+    app: residents-mf
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: residents-mf
+spec:
+  to:
+    kind: Service
+    name: residents-mf
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: container-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: container-app
+  template:
+    metadata:
+      labels:
+        app: container-app
+    spec:
+      containers:
+        - name: container-app
+          image: idarezo123/container-app:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: container-app
+spec:
+  selector:
+    app: container-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: container-app
+spec:
+  to:
+    kind: Service
+    name: container-app
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

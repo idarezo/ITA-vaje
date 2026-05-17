@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:4000";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:4000";
 
 const STATUS_PAID = (s) => s === "SUCCEEDED";
 const STATUS_LABEL = {

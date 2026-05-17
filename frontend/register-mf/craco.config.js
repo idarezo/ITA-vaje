@@ -10,7 +10,7 @@ module.exports = {
   },
   webpack: {
     configure: (webpackConfig) => {
-      webpackConfig.output.publicPath = "http://localhost:3032/";
+      webpackConfig.output.publicPath = process.env.REACT_APP_PUBLIC_URL || "http://localhost:3032/";
       webpackConfig.output.uniqueName = "register-mf";
       return webpackConfig;
     },

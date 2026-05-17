@@ -11,10 +11,10 @@ module.exports = {
         new ModuleFederationPlugin({
           name: "container",
           remotes: {
-            auth: "auth@http://localhost:3001/remoteEntry.js",
-            property: "property@http://localhost:3031/remoteEntry.js",
-            residents: "residents@http://localhost:3033/remoteEntry.js",
-            payment: "payment@http://localhost:3035/remoteEntry.js",
+            auth:      `auth@${process.env.REACT_APP_AUTH_MF_URL || "http://localhost:3001"}/remoteEntry.js`,
+            property:  `property@${process.env.REACT_APP_PROPERTY_MF_URL || "http://localhost:3031"}/remoteEntry.js`,
+            residents: `residents@${process.env.REACT_APP_RESIDENTS_MF_URL || "http://localhost:3033"}/remoteEntry.js`,
+            payment:   `payment@${process.env.REACT_APP_PAYMENT_MF_URL || "http://localhost:3035"}/remoteEntry.js`,
           },
           shared: {
             react: {

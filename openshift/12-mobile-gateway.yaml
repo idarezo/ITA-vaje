@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobile-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mobile-gateway
+  template:
+    metadata:
+      labels:
+        app: mobile-gateway
+    spec:
+      containers:
+        - name: mobile-gateway
+          image: idarezo123/mobile-gateway:latest
+          env:
+            - name: PORT
+              value: "4001"
+            - name: PROPERTY_SERVICE_URL
+              value: "http://property-service:3002"
+            - name: RESIDENTS_SERVICE_URL
+              value: "http://residents-service:3003"
+            - name: PAYMENT_SERVICE_URL
+              value: "http://payment-service:3004"
+          ports:
+            - containerPort: 4001
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mobile-gateway
+spec:
+  selector:
+    app: mobile-gateway
+  ports:
+    - port: 4001
+      targetPort: 4001
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mobile-gateway
+spec:
+  to:
+    kind: Service
+    name: mobile-gateway
+  port:
+    targetPort: 4001
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

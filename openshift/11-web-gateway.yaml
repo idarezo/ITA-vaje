@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-gateway
+  template:
+    metadata:
+      labels:
+        app: web-gateway
+    spec:
+      containers:
+        - name: web-gateway
+          image: idarezo123/web-gateway:latest
+          env:
+            - name: PORT
+              value: "4000"
+            - name: USER_SERVICE_URL
+              value: "http://user-service:3005"
+            - name: PROPERTY_SERVICE_URL
+              value: "http://property-service:3002"
+            - name: RESIDENTS_SERVICE_URL
+              value: "http://residents-service:3003"
+            - name: PAYMENT_SERVICE_URL
+              value: "http://payment-service:3004"
+          ports:
+            - containerPort: 4000
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-gateway
+spec:
+  selector:
+    app: web-gateway
+  ports:
+    - port: 4000
+      targetPort: 4000
+---
+# Route = OpenShift specifičen objekt ki odpre javni URL
+# OpenShift samodejno dodeli hostname v obliki:
+# web-gateway-<namespace>.apps.<cluster-domain>
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: web-gateway
+spec:
+  to:
+    kind: Service
+    name: web-gateway
+  port:
+    targetPort: 4000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

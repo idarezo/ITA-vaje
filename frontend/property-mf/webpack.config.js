@@ -4,11 +4,14 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
 const path = require("path");
 
+const PUBLIC_PATH = process.env.PUBLIC_PATH || "http://localhost:3031/";
+const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:4000";
+
 module.exports = {
   entry: "./src/index.js",
   output: {
     path: path.resolve(__dirname, "dist"),
-    publicPath: "http://localhost:3031/",
+    publicPath: PUBLIC_PATH,
     uniqueName: "property-mf",
   },
   devServer: {
@@ -30,6 +33,7 @@ module.exports = {
       __VUE_OPTIONS_API__: true,
       __VUE_PROD_DEVTOOLS__: false,
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+      "process.env.API_BASE_URL": JSON.stringify(API_BASE_URL),
     }),
     new VueLoaderPlugin(),
     new HtmlWebpackPlugin({ template: "./public/index.html" }),
